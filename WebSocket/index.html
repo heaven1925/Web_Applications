@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+
+<html>
+<body>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script language = "javascript" type ="text/javascript">
+
+// @a.ertekin - 91220001774 - ATAKAN ERTEKİN 
+
+var sensorVal;
+var websocket;
+
+var sensor1 = [ 0 , 0 , 0];
+var sensor2 = [ 0 , 0 , 0];
+
+function init() 
+{
+	sensorVal = document.getElementById("Sensor Val = ");
+	websocket = new WebSocket("ws://localhost:8081/");
+	
+	google.charts.load('current', {'packages': ['corechart', 'table'] });
+	google.charts.setOnLoadCallback(drawCharts);
+	
+	websocket.onopen = function(evt) 
+	{
+		sensorVal.innerHTML="CONNECTED ";
+	}
+	websocket.onmessage = function(event) 
+	{
+
+		console.log("Mesaj geldi");
+
+		var jsonObject = JSON.parse(event.data); //create a JSON object
+		sensor1 = jsonObject.sensor1;
+		sensor2 = jsonObject.sensor2;
+		console.log("Received data: ", sensor1, sensor2);
+
+		drawCharts()
+		
+	}
+}
+
+window.addEventListener("load", init, false);
+
+function sendfunc(param)
+{
+	websocket.send(param);
+	if( param == 1 )
+	{
+		console.log("Send = " + param + " have been sended ");
+	}
+	else
+	{
+		console.log("Send = " + "Failed to send code:" + param );
+	}
+}
+
+let arr = [['Time', 'Temperature', 'Light']];		
+
+function addArray(deger) {
+  arr.push(deger);
+}
+
+function drawCharts(str) 
+{
+	
+	console.log("SENSOR 1", sensor1);
+	console.log("SENSOR 2", sensor2);
+	addArray(sensor1);
+	addArray(sensor2);
+			
+	var data = google.visualization.arrayToDataTable(arr);		
+
+	var options = { title : '(Line Chart)', curveType : 'function', legend: {position: 'bottom'}  };
+	var chart = new google.visualization.LineChart(document.getElementById('curve_chart_line'));
+	chart.draw(data, options);
+
+	var data = google.visualization.arrayToDataTable([
+			    ['Time', 'Temperature', 'Light'] ,
+				sensor1, 
+				sensor2
+			]);		
+
+	var options = { title : '(Column Chart)', curveType : 'function', legend: {position: 'bottom'}  };
+	var chart = new google.visualization.ColumnChart(document.getElementById('curve_chart_column'));
+	chart.draw(data, options);
+
+	var table = new google.visualization.Table(document.getElementById('data_table'));
+	table.draw(data, {showRowNumber: true, width: '100%', height: '100%'});
+}
+
+</script>
+
+<button onclick="sendfunc(1)"> GET SENSOR VALUE </button>
+<div id = "Sensor Val = "></div>
+<div style="width: 100%;">
+		<div id="curve_chart_line" style="width : 50%; height: 800px; float:left;"></div>
+		<div id="curve_chart_column" style="width: 50%; height: 800px; float:left;"></div>
+	</div>
+
+	<div id="data_table" style="width: 100%; height: 100px;"></div>
+
+
+</body>
+</html>

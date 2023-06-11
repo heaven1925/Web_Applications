@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script>
+var source = new EventSource("/demosse");
+source.onmessage = function (event) {
+document.getElementById("demo").innerHTML += event.data + "<br>";
+};
+</script>
+</body>
+<div id="demo">
+</div>
+</html>

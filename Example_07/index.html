@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script language = "javascript" type ="text/javascript">
+
+var output;
+var websocket;
+
+function init() 
+{
+	output = document.getElementById("output");
+	websocket = new WebSocket("ws://localhost:8081/");
+	websocket.onopen = function(evt) 
+	{
+		output.innerHTML="CONNECTED";
+	};
+	websocket.onmessage = function(event) 
+	{
+		output.innerHTML+=event.data;
+	};
+}
+
+
+window.addEventListener("load", init, false);
+
+function sendfunc()
+{
+	var text=document.getElementById("txt1").value;
+	websocket.send(text);
+	console.log(text+ " sent");
+}
+
+</script>
+<div id = "output"></div>
+<input type="text" id="txt1" />
+<button onclick="sendfunc()"> Send</button>
+</body>
+</html>

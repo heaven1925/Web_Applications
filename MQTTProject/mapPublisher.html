@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cellphone Interface</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+    <style>
+      .phone-interface {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .input-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .input-group input {
+        margin-left: 5px;
+      }
+
+      .button {
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin-top: 10px;
+        cursor: pointer;
+      }
+
+      #mapImage {
+      max-width: 100px; /* Maksimum genişlik */
+      max-height: 50px; /* Maksimum yükseklik */
+      border: 1px solid black; /* Kenarlık */
+      margin: 10px; /* Dış boşluk */
+    }
+
+    </style>
+  </head>
+  <body>
+    <div class="phone-interface">
+      <h1>Set Start Location</h1>
+      <div class="input-group">
+        <label for="mapLeft">L:</label>
+        <input type="text" id="mapLeft" />
+      </div>
+      <div class="input-group">
+        <label for="mapRight">R:</label>
+        <input type="text" id="mapRight" />
+      </div>
+      <div class="input-group">
+        <label for="mapForward">F:</label>
+        <input type="text" id="mapForward" />
+      </div>
+      <div class="input-group">
+        <label for="mapBackward">B:</label>
+        <input type="text" id="mapBackward" />
+      </div>
+      <label type="text" id="macAddress" ></label>
+      <button class="button" onclick="printAndSendStartLocation()">Send Start Location</button>
+
+      <label for="infoMessage">Please Use Arrow's On Keyboard For Live Location</label>
+
+      <img id="mapImage" src="map.png" alt="Map Image">
+      <ul id="SendedList"></ul>
+    </div>
+  
+    <script>
+
+        /* Atakan ERTEKİN - 91220001774 */
+
+        const macAddress = generateRandomMacAddress();
+        document.getElementById("macAddress").textContent = macAddress;
+        console.log(macAddress);
+
+        var textList = [];
+        var mapLeft = 0;
+        var mapRight = 0;
+        var mapForward = 0;
+        var mapBackward = 0;
+
+        var mapMsg = " ";
+
+        // ok tuslarına göre gonderilen verinin güncellenmesi ve console yazilmasi
+        function updateMapMessage(mapMsg)
+        {
+            mapMsg = "L:" + mapLeft + " R:" + mapRight + " F:" + mapForward + " B:" + mapBackward ;
+            textList.push(mapMsg);
+        }
+
+        // baslangic konumunun veya herhangi bir konumun belirlenip gonderilmesi, su anki konumu kullan gibi düşünülebilir.
+        function printAndSendStartLocation()
+        {
+            mapLeft = document.getElementById("mapLeft").value;
+            mapRight = document.getElementById("mapRight").value;
+            mapForward = document.getElementById("mapForward").value;
+            mapBackward = document.getElementById("mapBackward").value;
+
+            updateMapMessage(mapMsg);
+
+            var list = document.getElementById("SendedList");
+            list.innerHTML = "Sended Map Coordinate:"; // Listeyi temizler
+
+            for (var i = textList.length - 1 ; i >= 0; i--) 
+            {
+                var newText = document.createElement("li");
+                newText.textContent = textList[i];
+                
+                list.appendChild(newText);
+            }
+
+            var data =
+            {
+                macAddr             : macAddress      ,
+                rssiPower           : getRandomRSSI() ,
+                leftPosition        : mapLeft         ,
+                rightPosition       : mapRight        ,
+                forwardPosition     : mapForward      ,
+                backwardPosition    : mapBackward   
+            };
+            console.log(JSON.stringify(data));
+
+            // Canlı Konum bilgisini Güncelle ve Client üzerinden aktar
+            const jsonData = JSON.stringify(data);
+            client.publish('myTopic', jsonData);
+        }
+
+        // ok tuslarına basılarak konumun güncellenme ve sunucuya gonderilme fonksiyonu
+        document.addEventListener("keydown", function(event) 
+        {     
+            if( mapLeft == NaN ) return;
+
+            if( event.keyCode === 37 || event.keyCode === 38 || event.keyCode === 39 || event.keyCode === 40 )
+            {
+
+                var imgElement = document.getElementById("mapImage");
+
+                if (event.keyCode === 37) { // Sol ok tuşu
+                    imgElement.src = "left_arrow.png"; // Sol ok görseli
+                    mapLeft++;
+                    if( mapRight != 0 ) mapRight--;
+                } 
+                else if (event.keyCode === 39) { // Sağ ok tuşu
+                    imgElement.src = "right_arrow.png"; // Sağ ok görseli
+                    mapRight++;
+                    if( mapLeft != 0 ) mapLeft--;
+                } 
+                else if (event.keyCode === 38) { // Yukarı ok tuşu
+                    imgElement.src = "up_arrow.png"; // Yukarı ok görseli
+                    mapForward++;
+                    if( mapBackward != 0 ) mapBackward--;
+                } 
+                else if (event.keyCode === 40) { // Aşağı ok tuşu
+                    imgElement.src = "down_arrow.png"; // Aşağı ok görseli
+                    mapBackward++;
+                    if( mapForward != 0 ) mapForward--;
+                }
+
+                updateMapMessage(mapMsg);
+            
+                var list = document.getElementById("SendedList");
+                list.innerHTML = "Sended Map Coordinate:"; // Listeyi temizler
+
+                for (var i = textList.length - 1 ; i >= 0; i--) 
+                {
+                    var newText = document.createElement("li");
+                    newText.textContent = textList[i];
+                    
+                    list.appendChild(newText);
+                }
+
+                var data =
+                {
+                    macAddr             : macAddress      ,
+                    rssiPower           : getRandomRSSI() ,
+                    leftPosition        : mapLeft         ,
+                    rightPosition       : mapRight        ,
+                    forwardPosition     : mapForward      ,
+                    backwardPosition    : mapBackward   
+                };
+                console.log(JSON.stringify(data));
+
+                // Canlı Konum bilgisini Güncelle ve Client üzerinden aktar
+                const jsonData = JSON.stringify(data);
+                client.publish('myTopic', jsonData);
+
+            } 
+        });
+
+    // Baglanilan bu cihaz için ( telefon olarak varsayılan ) random MAC adresi üretilmesi
+    function generateRandomMacAddress() 
+    {
+        let macAddress = "";
+        const hexChars = "0123456789ABCDEF";
+
+        for (let i = 0; i < 6; i++) {
+            // İki haneli rastgele bir hex karakteri seçin
+            const hex1 = hexChars[Math.floor(Math.random() * 16)];
+            const hex2 = hexChars[Math.floor(Math.random() * 16)];
+            // MAC adresine ekle
+            macAddress += hex1 + hex2;
+            // MAC adresinin son hanesi değilse, iki hane arasına ":" karakteri ekleyin
+            if (i !== 5) {
+            macAddress += ":";
+            }
+        }
+
+        return macAddress;
+    }
+
+    // Rastgele RSSI degeri üreten fonksiyon
+    function getRandomRSSI() 
+    {
+      // RSSI değerlerinin aralığı
+      var minRSSI = -100;
+      var maxRSSI = -30;
+
+      // Rastgele bir RSSI değeri üretin
+      var rssi = Math.floor(Math.random() * (maxRSSI - minRSSI + 1)) + minRSSI;
+
+      return rssi;
+    }
+
+     /* Mosquitto.conf
+        port 1883
+        listener 9001 
+        protocol websockets
+        socket_domain ipv4
+        allow_anonymous true
+        */
+
+        // MQTT Broker URL
+        const brokerUrl = 'ws://localhost:9001';
+        // MQTT Client Options
+        const options = 
+        {
+            clientID: 'mqtt-client1' , // Unique client ID
+        };
+        // Create an MQTT client
+        const client = mqtt.connect(brokerUrl,options);
+
+        // Handle client connection
+        client.on('connect', () => 
+        {
+            console.log('Connected to MQTT broker'); 
+            // Publish a message to a topic
+            client.publish('myTopic', 'Hello, MQTT!');
+        } );
+
+        // Handle received messages
+        client.on('message' , (topic, message) =>
+        {
+            console.log('Message received:' , message.toString() );
+        } );
+
+        // Handle client disconnection
+        client.on('close' , () => 
+        {
+            console.log('Disconnected from MQTT broker');
+        } );
+
+
+
+    </script>
+
+    </body>
+</html>

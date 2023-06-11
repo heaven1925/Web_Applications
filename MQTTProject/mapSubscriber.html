@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>2D Harita</title>
+    <style>
+        /* Canvas için stil */
+        #mapCanvas {
+            display: block;
+            margin: 0 auto;
+            border: 1px solid black;
+        }
+
+        #mapText {
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script language = "javascript" type ="text/javascript"></script>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+    <div id="mapText"> 2D MAP For Phone Users </div>
+    <canvas id="mapCanvas" width="1000" height="1000"></canvas>
+    <button id="resetButton" onclick="resetMap()">Clear Map</button>
+
+
+    <div id="curve_chart_line"></div>
+    <div id="curve_chart_column"></div>
+
+    <ul id="RecvList"></ul>
+
+    <script>
+
+        var phone1_RSSI_val = [ 0 , 0 , 0];
+        var phone2_RSSI_val = [ 0 , 0 , 0];
+        var chart_rssiVal = [ 0 , 0 , 0];
+
+        function init() 
+        {
+            google.charts.load('current', {'packages': ['corechart', 'table'] });
+            google.charts.setOnLoadCallback(drawCharts);
+            
+        }
+
+        let arr = [['Time', 'Atakan-Phone', 'Aybars-Phone' ]];
+        function addArray(value) 
+        {
+            arr.push(value);
+        }
+
+        function drawCharts() 
+        {
+            console.log("Atakan-Phone RSSI Value =", phone1_RSSI_val);
+            console.log("Aybars-Phone RSSI Value =", phone2_RSSI_val);
+            addArray(chart_rssiVal);
+
+            var data = google.visualization.arrayToDataTable(arr);
+            console.log(arr);
+
+            var options = {
+                title: 'RSSI POWER GRAPH',
+                curveType: 'function',
+                legend: { position: 'bottom' },
+            };
+            var chart = new google.visualization.LineChart(
+                document.getElementById('curve_chart_line')
+            );
+            chart.draw(data, options);
+            }
+
+        window.addEventListener("load", init, false);
+
+    // Origin (0,0) -> 2D haritada pixel olarak (250,250) karşılık geliyor.
+    const mapOriginX = 500;
+    const mapOriginY = 500;
+    var phone1_XVal = mapOriginX;
+    var phone1_YVal = mapOriginY;
+    var phone2_XVal = mapOriginX;
+    var phone2_YVal = mapOriginY;
+
+        function drawMap(jsonPhone) 
+        {
+            // Canvas öğesini seçin
+            var canvas = document.getElementById("mapCanvas");
+
+            // 2D çizim bağlamını alın
+            var context = canvas.getContext("2d");
+
+            if (phone1_macAddr == jsonPhone.macAddr) 
+            {
+                // Çizgi rengini ve kalınlığını ayarlayın
+                context.strokeStyle = "blue";
+                context.lineWidth = 5;
+
+                // Önceki pozisyonları kaydedin
+                var prev1X = phone1_XVal;
+                var prev1Y = phone1_YVal;
+
+                // Yeni pozisyonları güncelleyin
+                phone1_XVal = phone1_XVal + parseInt(jsonPhone.rightPosition) - parseInt(jsonPhone.leftPosition);
+                phone1_YVal = phone1_YVal + parseInt(jsonPhone.backwardPosition ) - parseInt(jsonPhone.forwardPosition );
+                console.log( "L:" + jsonPhone.leftPosition + "R:" + jsonPhone.rightPosition + "F:" + jsonPhone.forwardPosition + "B:" + jsonPhone.backwardPosition );
+                console.log( "PrevX :" + prev1X + "PrevY :" + prev1Y);
+                console.log( "MoveX :" + phone1_XVal + "MoveY :" + phone1_XVal);
+
+                // Çizgi çiz
+                context.beginPath();
+                context.moveTo(prev1X, prev1Y);
+                context.lineTo(phone1_XVal, phone1_YVal);
+                context.stroke();
+            } 
+            else if (phone2_macAddr == jsonPhone.macAddr) 
+            {
+                // Çizgi rengini ve kalınlığını ayarlayın
+                context.strokeStyle = "red";
+                context.lineWidth = 5;
+
+                // Önceki pozisyonları kaydedin
+                var prev2X = phone2_XVal;
+                var prev2Y = phone2_YVal;
+
+                // Yeni pozisyonları güncelleyin
+                phone2_XVal = phone2_XVal + parseInt(jsonPhone.rightPosition) - parseInt(jsonPhone.leftPosition);
+                phone2_YVal = phone2_YVal + parseInt(jsonPhone.backwardPosition) - parseInt(jsonPhone.forwardPosition);
+                console.log( "L:" + jsonPhone.leftPosition + "R:" + jsonPhone.rightPosition + "F:" + jsonPhone.forwardPosition + "B:" + jsonPhone.backwardPosition );
+                console.log( "PrevX :" + prev2X + "PrevY :" + prev2Y);
+                console.log( "MoveX :" + phone2_XVal + "MoveY :" + phone2_YVal);
+
+
+                // Çizgi çiz
+                context.beginPath();
+                context.moveTo(prev2X, prev2Y);
+                context.lineTo(phone2_XVal, phone2_YVal);
+                context.stroke();
+            }
+        }
+
+        function resetMap() 
+        {
+        phone1_XVal = mapOriginX;
+        phone1_YVal = mapOriginY;
+        phone2_XVal = mapOriginX;
+        phone2_YVal = mapOriginY;
+
+        // Canvas öğesini seçin
+        var canvas = document.getElementById("mapCanvas");
+
+        // 2D çizim bağlamını alın
+        var context = canvas.getContext("2d");
+
+        // Canvas'i temizle
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    
+
+        var textList = [];
+        var recvCount = 0;
+        var phone1_macAddr = 0;
+        var phone2_macAddr = 0;
+
+        function updateChartAndMap( recvText )
+        {        
+            
+            var jsonObject = JSON.parse(recvText);
+            console.log(jsonObject.macAddr);
+
+            if( phone1_macAddr == 0 )
+            {
+                phone1_macAddr = jsonObject.macAddr;
+            }
+            else if( phone2_macAddr == 0 && phone1_macAddr != jsonObject.macAddr )
+            {
+                phone2_macAddr = jsonObject.macAddr;
+            }
+            else if( phone2_macAddr == 0)
+            {
+                console.log("Mac Addresses - 2 Available Open New Publisher ");
+            } 
+            else
+            {
+                console.log("Mac Addresses Already Taken!");
+            }
+
+            switch( jsonObject.macAddr )
+            {
+                case phone1_macAddr :
+                    phone1_RSSI_val = [ recvCount , jsonObject.rssiPower, phone2_RSSI_val[2] ];
+                    chart_rssiVal = phone1_RSSI_val;
+                break;
+
+                case phone2_macAddr : 
+                    phone2_RSSI_val = [ recvCount , phone1_RSSI_val[1] , jsonObject.rssiPower ];
+                    chart_rssiVal = phone2_RSSI_val;
+                break;
+
+                default: console.error("Mac Addr Failed!"); break;
+            }
+
+            recvCount++;
+
+            drawCharts();
+
+            drawMap(jsonObject);
+
+            textList.push(recvText);
+            var list = document.getElementById("RecvList");
+            list.innerHTML = "Recv Message List:"; // Listeyi temizler
+            for (var i = textList.length - 1 ; i >= 0; i--) 
+            {
+                var newText = document.createElement("li");
+                newText.textContent = textList[i];
+                
+                list.appendChild(newText);
+            }
+        }
+
+
+        /* Mosquitto.conf
+        port 1883
+        listener 9001 
+        protocol websockets
+        socket_domain ipv4
+        allow_anonymous true
+        */
+
+        // MQTT Broker URL
+        const brokerUrl = 'ws://localhost:9001';
+        // MQTT Client Options
+        const options = 
+        {
+            clientID: 'mqtt-client2' , // Unique client ID
+        };
+        // Create an MQTT client
+        const client = mqtt.connect(brokerUrl,options);
+
+        // Handle client connection
+        client.on('connect', () => 
+        {
+            console.log('Connected to MQTT broker'); 
+        } );
+
+        // Subscribe to a topic
+        client.subscribe('myTopic' , (err) =>
+        {
+            if(err)
+            {
+                console.error('Error subscribing to topic:',err);
+            }
+            else
+            {
+                console.log('Subscribed to topic: myTopic');
+            }
+        } );
+
+        // Handle received messages
+        client.on('message' , (topic, message) =>
+        {
+            updateChartAndMap( message.toString() );
+            
+            console.log('Message received:' , message.toString() );
+
+        } );
+
+        // Handle client disconnection
+        client.on('close' , () => 
+        {
+            console.log('Disconnected from MQTT broker');
+        } );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    </script>
+</body>
+</html>
